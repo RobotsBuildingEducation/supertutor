@@ -3,145 +3,8 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 import { firestore } from "../firebaseResources/resources";
-
-const createId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-function titleCase(value) {
-  if (!value) return "";
-  return value
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function generateCourse(prompt) {
-  const subject = prompt.trim();
-  const readableSubject = titleCase(subject);
-  const now = new Date().toISOString();
-  const courseId = createId();
-
-  const moduleBlueprints = [
-    {
-      title: `Launchpad: ${readableSubject} essentials`,
-      focus:
-        "Anchor the fundamentals, key vocabulary, and fast mental models so every future step feels intuitive.",
-      multipleChoice: {
-        scenario: `core idea in ${readableSubject}`,
-        correct: `Using ${readableSubject} to explain a real scenario in your own words`,
-        options: [
-          `Using ${readableSubject} to explain a real scenario in your own words`,
-          `Memorising terminology without applying it`,
-          `Skipping practice because the topic feels familiar`,
-          `Waiting for inspiration instead of experimenting`,
-        ],
-        explanation:
-          "Explaining a scenario forces you to connect concepts and shows Gemini you can transfer knowledge on demand.",
-      },
-      freeResponse: {
-        prompt: `Describe the biggest misconception people have about ${readableSubject} and how you would reframe it.`,
-        keywords: ["misconception", "reframe", subject.toLowerCase()],
-        sample:
-          "Call out the misconception, unpack why it appears, and deliver a fresh framing that unlocks the right intuition.",
-      },
-    },
-    {
-      title: `Skill sprint: ${readableSubject} in action`,
-      focus:
-        "Apply the skill to new contexts, tune your decision-making, and turn feedback into fuel.",
-      multipleChoice: {
-        scenario: `smart strategy while using ${readableSubject}`,
-        correct: `Breaking down a challenge into smaller experiments and reflecting on each result`,
-        options: [
-          `Breaking down a challenge into smaller experiments and reflecting on each result`,
-          `Repeating the exact same approach hoping for different results`,
-          `Ignoring feedback because the plan feels right`,
-          `Letting someone else solve it entirely`,
-        ],
-        explanation:
-          "Iterating with intention signals you can navigate ambiguity, a hallmark of mastery.",
-      },
-      freeResponse: {
-        prompt: `Share a mini case study: how would ${readableSubject} transform a challenge for a friend or teammate?`,
-        keywords: ["challenge", "impact", "iteration"],
-        sample:
-          "Describe the starting problem, the ${readableSubject}-powered approach, and the measurable outcome.",
-      },
-    },
-    {
-      title: `Creator lab: make ${readableSubject} yours`,
-      focus:
-        "Design a playful build, experiment, or performance that shows your new confidence.",
-      project: {
-        prompt: `Design a creative milestone that proves your ${readableSubject} superpower. What will you ship, share, or showcase?`,
-        celebration:
-          "Once you describe your milestone, Gemini will unlock a remix mission so the journey never gets stale.",
-      },
-    },
-  ];
-
-  const modules = moduleBlueprints.map((blueprint) => {
-    const activities = [];
-
-    if (blueprint.multipleChoice) {
-      activities.push({
-        id: createId(),
-        type: "multipleChoice",
-        prompt: `Gemini wants to know: what demonstrates ${blueprint.multipleChoice.scenario}?`,
-        choices: blueprint.multipleChoice.options,
-        correctAnswer: blueprint.multipleChoice.correct,
-        explanation: blueprint.multipleChoice.explanation,
-        status: "pending",
-        attempts: 0,
-        history: [],
-      });
-    }
-
-    if (blueprint.freeResponse) {
-      activities.push({
-        id: createId(),
-        type: "freeResponse",
-        prompt: blueprint.freeResponse.prompt,
-        keywords: blueprint.freeResponse.keywords,
-        sampleAnswer: blueprint.freeResponse.sample,
-        status: "pending",
-        attempts: 0,
-        history: [],
-      });
-    }
-
-    if (blueprint.project) {
-      activities.push({
-        id: createId(),
-        type: "project",
-        prompt: blueprint.project.prompt,
-        celebration: blueprint.project.celebration,
-        status: "pending",
-        attempts: 0,
-        history: [],
-      });
-    }
-
-    return {
-      id: createId(),
-      title: blueprint.title,
-      focus: blueprint.focus,
-      activities,
-    };
-  });
-
-  return {
-    id: courseId,
-    subject: readableSubject,
-    title: `${readableSubject} Mastery`,
-    description: `An adaptive course crafted with Gemini to make ${readableSubject} second nature.`,
-    createdAt: now,
-    modules,
-  };
-}
+import { generateCourse as generateCourseFromAI } from "../services/courseGenerator";
+import { createId } from "../utils/id";
 
 function evaluateActivity(activity, response) {
   if (activity.type === "multipleChoice") {
@@ -244,6 +107,7 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
   const [persistError, setPersistError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [responses, setResponses] = useState({});
+  const [courseGenerationError, setCourseGenerationError] = useState("");
 
   useEffect(() => {
     setCourses(userData?.courses || []);
@@ -322,13 +186,15 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
     event.preventDefault();
     const trimmedPrompt = coursePrompt.trim();
     if (!trimmedPrompt) {
+      setCourseGenerationError("Tell Gemini what to design so we can craft your course.");
       return;
     }
 
     setIsGeneratingCourse(true);
+    setCourseGenerationError("");
 
     try {
-      const newCourse = generateCourse(trimmedPrompt);
+      const newCourse = await generateCourseFromAI(trimmedPrompt);
       const updatedCourses = [...courses, newCourse];
       const newActiveId = newCourse.id;
 
@@ -339,6 +205,11 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
       setCoursePrompt("");
 
       await persistCourses(updatedCourses, newActiveId);
+    } catch (error) {
+      console.error("Failed to generate course", error);
+      setCourseGenerationError(
+        "We couldn\'t generate that course just yet. Try a different prompt or retry in a moment."
+      );
     } finally {
       setIsGeneratingCourse(false);
     }
@@ -559,6 +430,11 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
             </button>
           </div>
         </form>
+        {courseGenerationError ? (
+          <p className="tutor__error" role="alert">
+            {courseGenerationError}
+          </p>
+        ) : null}
         <p className="tutor__create-hint">
           Super Tutor uses Gemini to craft modules, remix challenges, and escalate
           missions based on your answers.

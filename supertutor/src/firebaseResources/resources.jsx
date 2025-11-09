@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import StyledFirebaseAuth from "react-firebaseui/StyledFirebaseAuth";
+import { getGenerativeModel, getVertexAI } from "@firebase/vertexai";
 
 export const AuthComponent = StyledFirebaseAuth.default
   ? StyledFirebaseAuth.default
@@ -20,6 +21,25 @@ export const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const firestore = getFirestore(app);
+
+let vertexAIInstance = null;
+try {
+  vertexAIInstance = getVertexAI(app);
+} catch (error) {
+  console.warn("Vertex AI is not available in this environment.", error);
+}
+
+export const vertexAI = vertexAIInstance;
+export const courseGeneratorModel = vertexAI
+  ? getGenerativeModel(vertexAI, {
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    })
+  : null;
+export const ai = vertexAI;
+export const simpleModel = courseGeneratorModel;
 
 export const uiConfig = {
   // Popup signin flow rather than redirect flow.
