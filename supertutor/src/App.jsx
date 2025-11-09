@@ -1,36 +1,63 @@
 // src/App.jsx
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 
 import "./App.css";
 
 import { auth, firestore } from "./firebaseResources/resources";
-import { AuthDisplay } from "./components/AuthDisplay";
+import { LandingPage } from "./pages/LandingPage";
+import { OnboardingPage } from "./pages/OnboardingPage";
+import { ProfilePage } from "./pages/ProfilePage";
+
+function ProtectedRoute({ user, children }) {
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const userRef = doc(firestore, "users", user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userRef = doc(firestore, "users", firebaseUser.uid);
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-          });
-        }
+          const newUserProfile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || "",
+            onboardingComplete: false,
+            createdAt: new Date().toISOString(),
+          };
 
-        navigate("/profile");
+          await setDoc(userRef, newUserProfile);
+          setUser(firebaseUser);
+          setUserData(newUserProfile);
+          navigate("/onboarding", { replace: true });
+        } else {
+          const existingUserData = userSnap.data();
+          setUser(firebaseUser);
+          setUserData(existingUserData);
+          navigate(
+            existingUserData.onboardingComplete ? "/profile" : "/onboarding",
+            { replace: true }
+          );
+        }
       } else {
-        navigate("/"); // public route
+        setUser(null);
+        setUserData(null);
+        navigate("/", { replace: true });
       }
 
       setIsLoading(false);
@@ -40,29 +67,41 @@ function App() {
   }, [navigate]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="loading-state" role="status" aria-live="polite">
+        Preparing your tutoring experience...
+      </div>
+    );
   }
 
   return (
-    <div>
-      Find reputable and good work
-      <AuthDisplay />
-      <div
-        style={{
-          fontSize: "75%",
-          visibility: "visible",
-        }}
-      >
-        ✨ created by{" "}
-        <a
-          target="_blank"
-          href="https://robotsbuildingeducation.com"
-          rel="noreferrer"
-        >
-          rox the AI cofounder
-        </a>
-      </div>
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={<LandingPage user={user} userData={userData} />}
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute user={user}>
+            <OnboardingPage
+              user={user}
+              userData={userData}
+              onUserDataUpdate={setUserData}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute user={user}>
+            <ProfilePage user={user} userData={userData} />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
