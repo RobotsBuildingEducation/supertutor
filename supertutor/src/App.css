@@ -833,6 +833,52 @@ main {
   gap: 1.25rem;
 }
 
+.tutor__module-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.2rem 1.5rem;
+  border-radius: 18px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.tutor__module-next h4 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  color: #38bdf8;
+}
+
+.tutor__module-next p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.75);
+  max-width: 460px;
+}
+
+.tutor__module-next button {
+  border: none;
+  border-radius: 14px;
+  padding: 0.75rem 1.6rem;
+  background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+}
+
+.tutor__module-next button:hover {
+  transform: translateY(-2px);
+  opacity: 0.95;
+}
+
+.tutor__module-next button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .tutor__activity {
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.22);

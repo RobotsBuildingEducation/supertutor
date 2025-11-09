@@ -4,7 +4,60 @@ import { useNavigate } from "react-router-dom";
 
 import { firestore } from "../firebaseResources/resources";
 import { generateCourse as generateCourseFromAI } from "../services/courseGenerator";
+import { generateAdaptiveModule } from "../services/adaptiveModuleGenerator";
 import { createId } from "../utils/id";
+
+function hydrateActivity(activity) {
+  if (!activity) {
+    return null;
+  }
+
+  return {
+    ...activity,
+    id: activity.id || createId(),
+    status: activity.status || "pending",
+    attempts: activity.attempts || 0,
+    history: Array.isArray(activity.history) ? activity.history : [],
+  };
+}
+
+function hydrateModule(module, index) {
+  if (!module) {
+    return null;
+  }
+
+  const activities = Array.isArray(module.activities)
+    ? module.activities.map(hydrateActivity).filter(Boolean)
+    : [];
+
+  return {
+    ...module,
+    id: module.id || createId(),
+    activities,
+    stage: module.stage || index + 1,
+  };
+}
+
+function hydrateCourseData(course) {
+  if (!course) {
+    return null;
+  }
+
+  const modules = Array.isArray(course.modules)
+    ? course.modules.map(hydrateModule).filter(Boolean)
+    : [];
+
+  return {
+    ...course,
+    modules,
+    history: Array.isArray(course.history) ? course.history : [],
+    blueprint: course.blueprint || null,
+    nextStage:
+      typeof course.nextStage === "number"
+        ? course.nextStage
+        : modules.length + 1,
+  };
+}
 
 function evaluateActivity(activity, response) {
   if (activity.type === "multipleChoice") {
@@ -104,13 +157,18 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
   const [selectedModuleId, setSelectedModuleId] = useState(null);
   const [coursePrompt, setCoursePrompt] = useState("");
   const [isGeneratingCourse, setIsGeneratingCourse] = useState(false);
+  const [isGeneratingModule, setIsGeneratingModule] = useState(false);
   const [persistError, setPersistError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [responses, setResponses] = useState({});
   const [courseGenerationError, setCourseGenerationError] = useState("");
+  const [moduleGenerationError, setModuleGenerationError] = useState("");
 
   useEffect(() => {
-    setCourses(userData?.courses || []);
+    const preparedCourses = (userData?.courses || [])
+      .map((course) => hydrateCourseData(course))
+      .filter(Boolean);
+    setCourses(preparedCourses);
     setActiveCourseId(userData?.activeCourseId || null);
   }, [userData]);
 
@@ -192,6 +250,7 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
 
     setIsGeneratingCourse(true);
     setCourseGenerationError("");
+    setModuleGenerationError("");
 
     try {
       const newCourse = await generateCourseFromAI(trimmedPrompt);
@@ -224,6 +283,7 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
     const courseToActivate = courses.find((course) => course.id === courseId);
     setSelectedModuleId(courseToActivate?.modules?.[0]?.id || null);
     setResponses({});
+    setModuleGenerationError("");
     await persistCourses(courses, courseId);
   };
 
@@ -255,6 +315,8 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
     const activity = courses[courseIndex].modules[moduleIndex].activities[activityIndex];
 
     const { correct, message } = evaluateActivity(activity, response || "");
+    const trimmedResponse =
+      typeof response === "string" ? response.trim() : String(response || "");
 
     const updatedCourses = courses.map((course, index) => {
       if (index !== courseIndex) {
@@ -296,14 +358,78 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
         };
       });
 
+      const moduleStage = course.modules[moduleIndex]?.stage || moduleIndex + 1;
+      const courseHistoryEntry = {
+        id: createId(),
+        recordedAt: new Date().toISOString(),
+        moduleId,
+        moduleTitle: course.modules[moduleIndex]?.title || "",
+        moduleStage,
+        activityId,
+        activityType: activity.type,
+        prompt: activity.prompt,
+        response,
+        responseSummary: trimmedResponse.slice(0, 160),
+        correct,
+      };
+
       return {
         ...course,
         modules: updatedModules,
+        history: [...(course.history || []), courseHistoryEntry],
       };
     });
 
     setCourses(updatedCourses);
     await persistCourses(updatedCourses, activeCourse?.id || null);
+  };
+
+  const handleGenerateNextModule = async () => {
+    if (!activeCourse) {
+      return;
+    }
+
+    const courseIndex = courses.findIndex((course) => course.id === activeCourse.id);
+    if (courseIndex === -1) {
+      return;
+    }
+
+    const course = courses[courseIndex];
+    const stage = course.nextStage || course.modules.length + 1;
+
+    setIsGeneratingModule(true);
+    setModuleGenerationError("");
+
+    try {
+      const newModule = await generateAdaptiveModule({
+        subject: course.subject || course.title,
+        stage,
+        blueprint: course.blueprint,
+        history: course.history,
+      });
+
+      const updatedCourse = {
+        ...course,
+        modules: [...course.modules, newModule],
+        nextStage: stage + 1,
+      };
+
+      const updatedCourses = courses.map((existing, index) =>
+        index === courseIndex ? updatedCourse : existing
+      );
+
+      setCourses(updatedCourses);
+      setSelectedModuleId(newModule.id);
+      setResponses({});
+      await persistCourses(updatedCourses, activeCourse.id);
+    } catch (error) {
+      console.error("Failed to generate adaptive module", error);
+      setModuleGenerationError(
+        "We couldn't craft the next mission just yet. Try again in a moment."
+      );
+    } finally {
+      setIsGeneratingModule(false);
+    }
   };
 
   const renderActivity = (module, activity) => {
@@ -493,7 +619,10 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
                     <button
                       key={module.id}
                       className={`tutor__module ${isSelected ? "tutor__module--active" : ""}`}
-                      onClick={() => setSelectedModuleId(module.id)}
+                      onClick={() => {
+                        setSelectedModuleId(module.id);
+                        setModuleGenerationError("");
+                      }}
                       role="tab"
                       aria-selected={isSelected}
                     >
@@ -513,6 +642,33 @@ export function TutorPage({ user, userData, onUserDataUpdate }) {
                       renderActivity(selectedModule, activity)
                     )}
                   </ul>
+                  {moduleGenerationError ? (
+                    <p className="tutor__error" role="alert">
+                      {moduleGenerationError}
+                    </p>
+                  ) : null}
+                  {selectedModule.activities.every(
+                    (activity) => activity.status === "correct"
+                  ) ? (
+                    <div className="tutor__module-next">
+                      <div>
+                        <h4>Ready for the next mission?</h4>
+                        <p>
+                          Gemini will generate a fresh module tailored to your last
+                          reflections and wins.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateNextModule}
+                        disabled={isGeneratingModule}
+                      >
+                        {isGeneratingModule
+                          ? "Summoning your next mission..."
+                          : "Generate next mission"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
