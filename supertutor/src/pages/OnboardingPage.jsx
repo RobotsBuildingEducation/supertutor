@@ -51,7 +51,7 @@ export function OnboardingPage({ user, userData, onUserDataUpdate }) {
 
       await updateDoc(userRef, updates);
       onUserDataUpdate?.({ ...userData, ...updates });
-      navigate("/profile", { replace: true });
+      navigate("/tutor", { replace: true });
     } catch (err) {
       setError(
         "We couldn\'t save your preferences right now. Please try again in a moment."

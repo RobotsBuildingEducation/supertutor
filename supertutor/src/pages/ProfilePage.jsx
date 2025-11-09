@@ -15,6 +15,10 @@ export function ProfilePage({ user, userData }) {
     navigate("/", { replace: true });
   };
 
+  const handleLaunchTutor = () => {
+    navigate("/tutor");
+  };
+
   return (
     <div className="profile">
       <div className="profile__card">
@@ -56,6 +60,9 @@ export function ProfilePage({ user, userData }) {
         </section>
 
         <footer className="profile__footer">
+          <button className="profile__launch" onClick={handleLaunchTutor}>
+            Enter Super Tutor studio
+          </button>
           <button className="profile__signout" onClick={handleSignOut}>
             Sign out
           </button>

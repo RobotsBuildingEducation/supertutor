@@ -73,10 +73,10 @@ export function LandingPage({ user, userData }) {
             {user ? (
               <Link
                 className="hero__cta"
-                to={hasCompletedOnboarding ? "/profile" : "/onboarding"}
+                to={hasCompletedOnboarding ? "/tutor" : "/onboarding"}
               >
                 {hasCompletedOnboarding
-                  ? "Continue to your mastery plan"
+                  ? "Launch your mastery session"
                   : "Resume onboarding"}
               </Link>
             ) : (
@@ -144,8 +144,8 @@ export function LandingPage({ user, userData }) {
             {user ? (
               <p className="auth__success">
                 You&apos;re signed in! Head to your {" "}
-                <Link to={hasCompletedOnboarding ? "/profile" : "/onboarding"}>
-                  {hasCompletedOnboarding ? "profile" : "onboarding"}
+                <Link to={hasCompletedOnboarding ? "/tutor" : "/onboarding"}>
+                  {hasCompletedOnboarding ? "tutor" : "onboarding"}
                 </Link>{" "}
                 to keep going.
               </p>

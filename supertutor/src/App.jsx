@@ -11,6 +11,7 @@ import { auth, firestore } from "./firebaseResources/resources";
 import { LandingPage } from "./pages/LandingPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { TutorPage } from "./pages/TutorPage";
 
 function ProtectedRoute({ user, children }) {
   if (!user) {
@@ -50,7 +51,7 @@ function App() {
           setUser(firebaseUser);
           setUserData(existingUserData);
           navigate(
-            existingUserData.onboardingComplete ? "/profile" : "/onboarding",
+            existingUserData.onboardingComplete ? "/tutor" : "/onboarding",
             { replace: true }
           );
         }
@@ -97,6 +98,14 @@ function App() {
         element={
           <ProtectedRoute user={user}>
             <ProfilePage user={user} userData={userData} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tutor"
+        element={
+          <ProtectedRoute user={user}>
+            <TutorPage user={user} userData={userData} />
           </ProtectedRoute>
         }
       />
