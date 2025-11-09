@@ -4,19 +4,19 @@ import { AuthDisplay } from "../components/AuthDisplay";
 
 const features = [
   {
-    title: "Instant mastery",
+    title: "One prompt to launch a course",
     description:
-      "Super Tutor understands every curriculum and adapts its teaching style to match how you learn best.",
+      "Tell Super Tutor what you want to master and Gemini designs a living curriculum in seconds.",
   },
   {
-    title: "Human + AI synergy",
+    title: "Adaptive mastery loops",
     description:
-      "Personalized lessons, live explanations, and practice plans that improve after every interaction.",
+      "Every question you answer—right or wrong—reshapes the next challenge so momentum never stops.",
   },
   {
-    title: "Results that compound",
+    title: "Progress you can feel",
     description:
-      "From exam prep to creative pursuits, learners see measurable progress in days—not months.",
+      "Track levels, unlock new variants of practice, and celebrate streaks that keep learning playful.",
   },
 ];
 
@@ -38,9 +38,8 @@ const testimonials = [
   },
 ];
 
-export function LandingPage({ user, userData }) {
-  const hasCompletedOnboarding = Boolean(userData?.onboardingComplete);
-
+export function LandingPage({ user }) {
+  
   return (
     <div className="page">
       <div className="glow" aria-hidden="true" />
@@ -64,20 +63,16 @@ export function LandingPage({ user, userData }) {
             The tutor that outperforms every human in every subject.
           </h1>
           <p className="hero__subtitle">
-            Super Tutor blends advanced reasoning with a deep teaching toolkit.
-            It diagnoses knowledge gaps instantly, crafts dynamic lessons, and
-            coaches you through breakthroughs in record time.
+            Describe any outcome—"Master differential equations", "Become a
+            storyboard artist", "Understand quantum computing"—and Super Tutor
+            pairs Gemini intelligence with rich activities that respond to every
+            attempt.
           </p>
 
           <div className="hero__actions">
             {user ? (
-              <Link
-                className="hero__cta"
-                to={hasCompletedOnboarding ? "/profile" : "/onboarding"}
-              >
-                {hasCompletedOnboarding
-                  ? "Continue to your mastery plan"
-                  : "Resume onboarding"}
+              <Link className="hero__cta" to="/tutor">
+                Launch your mastery studio
               </Link>
             ) : (
               <a className="hero__cta" href="#signup">
@@ -92,11 +87,11 @@ export function LandingPage({ user, userData }) {
           <dl className="hero__metrics">
             <div>
               <dt>500K+</dt>
-              <dd>Personalized lessons delivered across 120 subjects.</dd>
+              <dd>Adaptive courses spanning sciences, arts, and careers.</dd>
             </div>
             <div>
               <dt>97%</dt>
-              <dd>Learners report accelerated progress within two weeks.</dd>
+              <dd>Learners level up at least one skill tier each week.</dd>
             </div>
             <div>
               <dt>24/7</dt>
@@ -136,18 +131,15 @@ export function LandingPage({ user, userData }) {
           <div className="auth__content">
             <h2>Ready to learn faster than ever?</h2>
             <p>
-              Sign in with Google to create your profile. New learners are
-              guided through an onboarding experience so Super Tutor can craft a
-              bespoke mastery path.
+              Sign in with Google, describe your dream skill, and Super Tutor
+              spins up a smart course with checkpoints, challenges, and
+              celebrations tailored to your pace.
             </p>
 
             {user ? (
               <p className="auth__success">
-                You&apos;re signed in! Head to your {" "}
-                <Link to={hasCompletedOnboarding ? "/profile" : "/onboarding"}>
-                  {hasCompletedOnboarding ? "profile" : "onboarding"}
-                </Link>{" "}
-                to keep going.
+                You&apos;re signed in! Jump back into your {" "}
+                <Link to="/tutor">active course</Link> to keep growing.
               </p>
             ) : (
               <div className="auth__actions">
