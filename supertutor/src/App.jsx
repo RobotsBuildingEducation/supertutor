@@ -9,7 +9,6 @@ import "./App.css";
 
 import { auth, firestore } from "./firebaseResources/resources";
 import { LandingPage } from "./pages/LandingPage";
-import { OnboardingPage } from "./pages/OnboardingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { TutorPage } from "./pages/TutorPage";
 
@@ -38,22 +37,25 @@ function App() {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName || "",
-            onboardingComplete: false,
+            courses: [],
+            activeCourseId: null,
             createdAt: new Date().toISOString(),
           };
 
           await setDoc(userRef, newUserProfile);
           setUser(firebaseUser);
           setUserData(newUserProfile);
-          navigate("/onboarding", { replace: true });
+          navigate("/tutor", { replace: true });
         } else {
           const existingUserData = userSnap.data();
+          const hydratedUserData = {
+            courses: [],
+            activeCourseId: null,
+            ...existingUserData,
+          };
           setUser(firebaseUser);
-          setUserData(existingUserData);
-          navigate(
-            existingUserData.onboardingComplete ? "/tutor" : "/onboarding",
-            { replace: true }
-          );
+          setUserData(hydratedUserData);
+          navigate("/tutor", { replace: true });
         }
       } else {
         setUser(null);
@@ -77,22 +79,7 @@ function App() {
 
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<LandingPage user={user} userData={userData} />}
-      />
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute user={user}>
-            <OnboardingPage
-              user={user}
-              userData={userData}
-              onUserDataUpdate={setUserData}
-            />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/" element={<LandingPage user={user} />} />
       <Route
         path="/profile"
         element={
@@ -105,7 +92,11 @@ function App() {
         path="/tutor"
         element={
           <ProtectedRoute user={user}>
-            <TutorPage user={user} userData={userData} />
+            <TutorPage
+              user={user}
+              userData={userData}
+              onUserDataUpdate={setUserData}
+            />
           </ProtectedRoute>
         }
       />
