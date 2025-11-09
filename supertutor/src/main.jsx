@@ -7,9 +7,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React>
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
 );

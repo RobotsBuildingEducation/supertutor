@@ -1,3 +1,4 @@
+import React from "react";
 import { auth, AuthComponent, uiConfig } from "../firebaseResources/resources";
 
 // AuthDisplay Component
